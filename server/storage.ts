@@ -52,118 +52,184 @@ export class MemStorage implements IStorage {
   }
 
   private seedData() {
-    // Create sample users
-    const user1: User = {
-      id: "user-1",
-      username: "sarah_dance",
-      avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=sarah",
-      bio: "Professional dancer & choreographer 💃",
-      followersCount: 125000,
-      followingCount: 342,
-      likesCount: 890000,
-    };
+    // Create diverse user base
+    const userCategories = [
+      { prefix: "anime", bio: "Anime enthusiast & AMV creator", icon: "🎌" },
+      { prefix: "gamer", bio: "Pro gamer & streamer", icon: "🎮" },
+      { prefix: "comedy", bio: "Making people laugh daily", icon: "😂" },
+      { prefix: "movie", bio: "Film buff & reviewer", icon: "🎬" },
+      { prefix: "music", bio: "Music producer & DJ", icon: "🎵" },
+      { prefix: "dance", bio: "Professional dancer", icon: "💃" },
+      { prefix: "chef", bio: "Cooking delicious content", icon: "🍳" },
+      { prefix: "travel", bio: "Exploring the world", icon: "✈️" },
+      { prefix: "sports", bio: "Sports highlights & commentary", icon: "⚽" },
+      { prefix: "tech", bio: "Tech reviews & tutorials", icon: "💻" },
+      { prefix: "art", bio: "Digital artist & creator", icon: "🎨" },
+      { prefix: "fitness", bio: "Fitness coach & motivation", icon: "💪" },
+      { prefix: "pets", bio: "Cute animal moments", icon: "🐾" },
+      { prefix: "magic", bio: "Magic tricks & illusions", icon: "🎩" },
+      { prefix: "science", bio: "Science experiments & facts", icon: "🔬" },
+    ];
 
-    const user2: User = {
-      id: "user-2",
-      username: "chef_marco",
-      avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=marco",
-      bio: "Cooking up delicious content 🍳",
-      followersCount: 89000,
-      followingCount: 156,
-      likesCount: 567000,
-    };
+    const users: User[] = [];
+    for (let i = 0; i < 100; i++) {
+      const category = userCategories[i % userCategories.length];
+      const user: User = {
+        id: `user-${i + 1}`,
+        username: `${category.prefix}_${i + 1}`,
+        avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=user${i}`,
+        bio: `${category.bio} ${category.icon}`,
+        followersCount: Math.floor(Math.random() * 500000) + 10000,
+        followingCount: Math.floor(Math.random() * 1000) + 50,
+        likesCount: Math.floor(Math.random() * 2000000) + 50000,
+      };
+      users.push(user);
+      this.users.set(user.id, user);
+    }
 
-    const user3: User = {
-      id: "user-3",
-      username: "travel_maya",
-      avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=maya",
-      bio: "Exploring the world one video at a time ✈️",
-      followersCount: 203000,
-      followingCount: 421,
-      likesCount: 1200000,
-    };
+    // Video URLs from public sources
+    const videoUrls = [
+      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
+      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
+      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
+      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4",
+      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4",
+      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4",
+      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4",
+      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4",
+    ];
 
-    this.users.set(user1.id, user1);
-    this.users.set(user2.id, user2);
-    this.users.set(user3.id, user3);
+    // Video categories with captions and sounds
+    const videoTemplates = [
+      // Anime
+      { caption: "Epic anime fight scene compilation", sound: "Anime OST Mix", category: "anime" },
+      { caption: "Top 10 anime moments that made us cry", sound: "Emotional Piano", category: "anime" },
+      { caption: "Anime transformation scenes be like", sound: "Power Up Theme", category: "anime" },
+      { caption: "When the main character gets serious", sound: "Epic Battle Music", category: "anime" },
+      { caption: "Best anime opening of all time?", sound: "Anime OP Cover", category: "anime" },
+      
+      // Gaming
+      { caption: "Insane clutch in ranked!", sound: "Victory Theme", category: "gaming" },
+      { caption: "When you finally beat that boss", sound: "Boss Battle Music", category: "gaming" },
+      { caption: "Epic gaming moments compilation", sound: "Game Soundtrack", category: "gaming" },
+      { caption: "Speedrun world record attempt", sound: "Intense Gaming Music", category: "gaming" },
+      { caption: "Pro player highlights", sound: "Electronic Beat", category: "gaming" },
+      
+      // Comedy/Funny
+      { caption: "You won't stop laughing at this", sound: "Comedy Sound Effect", category: "comedy" },
+      { caption: "Pranking my friend gone wrong", sound: "Funny Background Music", category: "comedy" },
+      { caption: "Expectation vs Reality", sound: "Comedic Timing", category: "comedy" },
+      { caption: "When life gives you lemons", sound: "Silly Music", category: "comedy" },
+      { caption: "Epic fail compilation", sound: "Funny Moments Mix", category: "comedy" },
+      
+      // Movies
+      { caption: "Best movie plot twists explained", sound: "Cinematic Score", category: "movies" },
+      { caption: "Behind the scenes movie magic", sound: "Film Score", category: "movies" },
+      { caption: "Top action scenes of 2024", sound: "Epic Movie Theme", category: "movies" },
+      { caption: "Movie theories that blow your mind", sound: "Mystery Music", category: "movies" },
+      { caption: "Iconic movie quotes recreation", sound: "Classic Film Score", category: "movies" },
+      
+      // Music
+      { caption: "New beat drop is fire", sound: "Original Mix", category: "music" },
+      { caption: "Making music from everyday sounds", sound: "Creative Beat", category: "music" },
+      { caption: "Guitar solo that will give you chills", sound: "Live Performance", category: "music" },
+      { caption: "Remix of your favorite song", sound: "EDM Remix", category: "music" },
+      { caption: "Singing challenge gone right", sound: "Vocal Cover", category: "music" },
+      
+      // Dance
+      { caption: "New choreography! What do you think?", sound: "Dance Mix", category: "dance" },
+      { caption: "Dance battle highlights", sound: "Hip Hop Beat", category: "dance" },
+      { caption: "Learn this dance in 30 seconds", sound: "Tutorial Track", category: "dance" },
+      { caption: "When the beat drops perfectly", sound: "Drop Mix", category: "dance" },
+      { caption: "Freestyle dance session", sound: "Freestyle Beat", category: "dance" },
+      
+      // Cooking
+      { caption: "5-minute meal that tastes amazing", sound: "Cooking Vibes", category: "cooking" },
+      { caption: "Secret ingredient revealed", sound: "Kitchen Beats", category: "cooking" },
+      { caption: "Cooking hack you need to try", sound: "Chef's Choice", category: "cooking" },
+      { caption: "Making the perfect dessert", sound: "Sweet Music", category: "cooking" },
+      { caption: "Street food adventure", sound: "Food Vlog Music", category: "cooking" },
+      
+      // Travel
+      { caption: "Hidden gem nobody talks about", sound: "Adventure Music", category: "travel" },
+      { caption: "Best view I've ever seen", sound: "Wanderlust Vibes", category: "travel" },
+      { caption: "Travel tips that save money", sound: "Journey Mix", category: "travel" },
+      { caption: "Trying local food for the first time", sound: "Explorer Theme", category: "travel" },
+      { caption: "Bucket list destination unlocked", sound: "Travel Beats", category: "travel" },
+      
+      // Sports
+      { caption: "Unbelievable sports moment", sound: "Victory Anthem", category: "sports" },
+      { caption: "Training routine that works", sound: "Workout Music", category: "sports" },
+      { caption: "Game winning play analysis", sound: "Sports Commentary", category: "sports" },
+      { caption: "Athlete motivation speech", sound: "Inspiring Track", category: "sports" },
+      { caption: "Skills training tutorial", sound: "Training Beat", category: "sports" },
+      
+      // Tech
+      { caption: "New tech you need to see", sound: "Tech Review Music", category: "tech" },
+      { caption: "Gadget unboxing and first impressions", sound: "Unboxing Beat", category: "tech" },
+      { caption: "Tech tip that changed everything", sound: "Tutorial Theme", category: "tech" },
+      { caption: "Comparing the latest phones", sound: "Review Music", category: "tech" },
+      { caption: "Future of technology explained", sound: "Futuristic Sound", category: "tech" },
+    ];
 
-    // Create sample videos with string dates for proper JSON serialization
-    const video1: Video = {
-      id: "video-1",
-      userId: user1.id,
-      videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-      thumbnailUrl: "https://api.dicebear.com/7.x/shapes/svg?seed=video1",
-      caption: "New dance routine! What do you think? 💫",
-      soundName: "Original Sound - sarah_dance",
-      likesCount: 45200,
-      commentsCount: 2,
-      viewsCount: 234000,
-      createdAt: new Date("2024-01-15T10:30:00Z"),
-    };
+    // Generate 5000 videos
+    const baseDate = new Date("2024-01-01T00:00:00Z");
+    for (let i = 0; i < 5000; i++) {
+      const template = videoTemplates[i % videoTemplates.length];
+      const user = users[i % users.length];
+      const videoUrl = videoUrls[i % videoUrls.length];
+      
+      // Create varied timestamps over the past year
+      const daysAgo = Math.floor(Math.random() * 365);
+      const hoursAgo = Math.floor(Math.random() * 24);
+      const minutesAgo = Math.floor(Math.random() * 60);
+      const createdAt = new Date(baseDate);
+      createdAt.setDate(createdAt.getDate() + daysAgo);
+      createdAt.setHours(createdAt.getHours() + hoursAgo);
+      createdAt.setMinutes(createdAt.getMinutes() + minutesAgo);
 
-    const video2: Video = {
-      id: "video-2",
-      userId: user2.id,
-      videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
-      thumbnailUrl: "https://api.dicebear.com/7.x/shapes/svg?seed=video2",
-      caption: "Easy 5-minute pasta recipe 🍝",
-      soundName: "Cooking Vibes Mix",
-      likesCount: 32100,
-      commentsCount: 0,
-      viewsCount: 189000,
-      createdAt: new Date("2024-01-14T15:20:00Z"),
-    };
+      const video: Video = {
+        id: `video-${i + 1}`,
+        userId: user.id,
+        videoUrl: videoUrl,
+        thumbnailUrl: `https://api.dicebear.com/7.x/shapes/svg?seed=video${i}`,
+        caption: template.caption,
+        soundName: template.sound,
+        likesCount: Math.floor(Math.random() * 1000000),
+        commentsCount: Math.floor(Math.random() * 50000),
+        viewsCount: Math.floor(Math.random() * 5000000),
+        createdAt: createdAt,
+      };
+      
+      this.videos.set(video.id, video);
+    }
 
-    const video3: Video = {
-      id: "video-3",
-      userId: user3.id,
-      videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
-      thumbnailUrl: "https://api.dicebear.com/7.x/shapes/svg?seed=video3",
-      caption: "Sunset in Santorini 🌅 This place is magical!",
-      soundName: "Summer Breeze",
-      likesCount: 67800,
-      commentsCount: 0,
-      viewsCount: 456000,
-      createdAt: new Date("2024-01-13T18:45:00Z"),
-    };
+    // Add some sample comments to first few videos
+    const commentTexts = [
+      "This is amazing!",
+      "Can't stop watching this",
+      "Tutorial please!",
+      "Best one yet",
+      "How did you do this?",
+      "Incredible work",
+      "This deserves more views",
+      "Obsessed with this",
+      "Need the full version",
+      "Masterpiece",
+    ];
 
-    const video4: Video = {
-      id: "video-4",
-      userId: user1.id,
-      videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
-      thumbnailUrl: "https://api.dicebear.com/7.x/shapes/svg?seed=video4",
-      caption: "Tutorial time! Learn this move step by step 🔥",
-      soundName: "Beat Drop Mix",
-      likesCount: 28900,
-      commentsCount: 0,
-      viewsCount: 145000,
-      createdAt: new Date("2024-01-12T12:00:00Z"),
-    };
-
-    this.videos.set(video1.id, video1);
-    this.videos.set(video2.id, video2);
-    this.videos.set(video3.id, video3);
-    this.videos.set(video4.id, video4);
-
-    // Create sample comments
-    const comment1: Comment = {
-      id: "comment-1",
-      videoId: video1.id,
-      userId: user2.id,
-      text: "Amazing moves! 🔥",
-      createdAt: new Date("2024-01-15T11:00:00Z"),
-    };
-
-    const comment2: Comment = {
-      id: "comment-2",
-      videoId: video1.id,
-      userId: user3.id,
-      text: "Can you do a tutorial for this?",
-      createdAt: new Date("2024-01-15T11:30:00Z"),
-    };
-
-    this.comments.set(comment1.id, comment1);
-    this.comments.set(comment2.id, comment2);
+    for (let i = 0; i < 100; i++) {
+      const comment: Comment = {
+        id: `comment-${i + 1}`,
+        videoId: `video-${Math.floor(i / 10) + 1}`,
+        userId: users[i % users.length].id,
+        text: commentTexts[i % commentTexts.length],
+        createdAt: new Date(Date.now() - Math.random() * 86400000),
+      };
+      this.comments.set(comment.id, comment);
+    }
   }
 
   // User methods
@@ -180,8 +246,10 @@ export class MemStorage implements IStorage {
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = randomUUID();
     const user: User = {
-      ...insertUser,
       id,
+      username: insertUser.username,
+      avatarUrl: insertUser.avatarUrl ?? null,
+      bio: insertUser.bio ?? null,
       followersCount: 0,
       followingCount: 0,
       likesCount: 0,
@@ -225,8 +293,12 @@ export class MemStorage implements IStorage {
   async createVideo(insertVideo: InsertVideo): Promise<Video> {
     const id = randomUUID();
     const video: Video = {
-      ...insertVideo,
       id,
+      userId: insertVideo.userId,
+      videoUrl: insertVideo.videoUrl,
+      thumbnailUrl: insertVideo.thumbnailUrl ?? null,
+      caption: insertVideo.caption ?? null,
+      soundName: insertVideo.soundName ?? null,
       likesCount: 0,
       commentsCount: 0,
       viewsCount: 0,

@@ -8,6 +8,29 @@ This is a TikTok-inspired short-form video sharing platform built as a full-stac
 
 Preferred communication style: Simple, everyday language.
 
+## Recent Changes
+
+### November 17, 2024
+- **Expanded Video Library**: Increased from 4 sample videos to 5,000 diverse video entries
+- **Content Categories**: Added 15 different content categories including:
+  - Anime clips & AMVs
+  - Gaming highlights & gameplay
+  - Comedy & funny moments
+  - Movie trailers & reviews
+  - Music videos & covers
+  - Dance performances
+  - Cooking & food content
+  - Travel vlogs
+  - Sports highlights
+  - Tech reviews & tutorials
+  - Art & creative content
+  - Fitness & motivation
+  - Pet & animal videos
+  - Magic tricks
+  - Science experiments
+- **User Base**: Expanded from 3 users to 100 creators across all categories
+- **Sample Comments**: Added 100 sample comments across the first 10 videos
+
 ## System Architecture
 
 ### Frontend Architecture
