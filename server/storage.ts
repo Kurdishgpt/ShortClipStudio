@@ -15,10 +15,17 @@ import {
 import { randomUUID } from "crypto";
 import { drizzle } from "drizzle-orm/neon-serverless";
 import { Pool, neonConfig } from "@neondatabase/serverless";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, lt, or, sql } from "drizzle-orm";
 import ws from "ws";
 
 neonConfig.webSocketConstructor = ws;
+
+export type VideoWithUser = Video & { user: User };
+
+export interface VideosPage {
+  items: VideoWithUser[];
+  nextCursor: string | null;
+}
 
 export interface IStorage {
   // User methods
@@ -32,6 +39,7 @@ export interface IStorage {
   getAllVideos(): Promise<Video[]>;
   getVideosByUser(userId: string): Promise<Video[]>;
   getTrendingVideos(limit?: number): Promise<Video[]>;
+  getVideosPage(params: { limit: number; cursor?: string }): Promise<VideosPage>;
   createVideo(video: InsertVideo): Promise<Video>;
   updateVideo(id: string, updates: Partial<Video>): Promise<Video | undefined>;
   incrementVideoViews(id: string): Promise<void>;
@@ -300,6 +308,59 @@ export class MemStorage implements IStorage {
       .slice(0, limit);
   }
 
+  async getVideosPage(params: { limit: number; cursor?: string }): Promise<VideosPage> {
+    const allVideos = await this.getAllVideos(); // Already sorted by createdAt DESC
+    let videosToProcess = allVideos;
+    
+    // Apply cursor filter if provided
+    if (params.cursor) {
+      try {
+        const [cursorCreatedAt, cursorId] = params.cursor.split("::");
+        const cursorDate = new Date(cursorCreatedAt);
+        
+        // Filter videos: createdAt < cursorDate OR (createdAt = cursorDate AND id < cursorId)
+        videosToProcess = allVideos.filter((video) => {
+          const videoDate = new Date(video.createdAt);
+          const videoTime = videoDate.getTime();
+          const cursorTime = cursorDate.getTime();
+          
+          if (videoTime < cursorTime) return true;
+          if (videoTime === cursorTime && video.id < cursorId) return true;
+          return false;
+        });
+      } catch (error) {
+        console.error("Invalid cursor format in MemStorage:", error);
+      }
+    }
+    
+    // Take limit + 1 to determine if there are more items
+    const fetchLimit = params.limit + 1;
+    const fetchedVideos = videosToProcess.slice(0, fetchLimit);
+    const hasMore = fetchedVideos.length > params.limit;
+    const videosForPage = fetchedVideos.slice(0, params.limit);
+    
+    // Generate next cursor from last video in page (before user filtering)
+    let nextCursor: string | null = null;
+    if (hasMore && videosForPage.length > 0) {
+      const lastVideo = videosForPage[videosForPage.length - 1];
+      nextCursor = `${lastVideo.createdAt.toISOString()}::${lastVideo.id}`;
+    }
+    
+    // Populate user data
+    const items: VideoWithUser[] = [];
+    for (const video of videosForPage) {
+      const user = await this.getUser(video.userId);
+      if (user) {
+        items.push({ ...video, user });
+      }
+    }
+    
+    return {
+      items,
+      nextCursor,
+    };
+  }
+
   async createVideo(insertVideo: InsertVideo): Promise<Video> {
     const id = randomUUID();
     const video: Video = {
@@ -477,6 +538,71 @@ export class DBStorage implements IStorage {
       .from(videos)
       .orderBy(desc(videos.viewsCount))
       .limit(limit);
+  }
+
+  async getVideosPage(params: { limit: number; cursor?: string }): Promise<VideosPage> {
+    const { limit, cursor } = params;
+    
+    // Fetch one extra to determine if there's a next page
+    const fetchLimit = limit + 1;
+    
+    let query = this.db
+      .select({
+        video: videos,
+        user: users,
+      })
+      .from(videos)
+      .leftJoin(users, eq(videos.userId, users.id))
+      .orderBy(desc(videos.createdAt), desc(videos.id))
+      .limit(fetchLimit);
+    
+    // Apply cursor filter if provided
+    if (cursor) {
+      try {
+        const [cursorCreatedAt, cursorId] = cursor.split("::");
+        const cursorDate = new Date(cursorCreatedAt);
+        
+        query = query.where(
+          or(
+            lt(videos.createdAt, cursorDate),
+            and(
+              eq(videos.createdAt, cursorDate),
+              lt(videos.id, cursorId)
+            )
+          )
+        ) as typeof query;
+      } catch (error) {
+        console.error("Invalid cursor format:", error);
+      }
+    }
+    
+    const results = await query;
+    
+    // Check if there are more items
+    const hasMore = results.length > limit;
+    const items = results.slice(0, limit);
+    
+    // Generate next cursor from last item
+    let nextCursor: string | null = null;
+    if (hasMore && items.length > 0) {
+      const lastItem = items[items.length - 1];
+      if (lastItem.video && lastItem.video.createdAt) {
+        nextCursor = `${lastItem.video.createdAt.toISOString()}::${lastItem.video.id}`;
+      }
+    }
+    
+    // Transform results to VideoWithUser
+    const videoWithUsers: VideoWithUser[] = items
+      .filter((r) => r.video && r.user)
+      .map((r) => ({
+        ...r.video!,
+        user: r.user!,
+      }));
+    
+    return {
+      items: videoWithUsers,
+      nextCursor,
+    };
   }
 
   async createVideo(insertVideo: InsertVideo): Promise<Video> {

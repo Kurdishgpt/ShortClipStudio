@@ -10,8 +10,20 @@ import {
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Video endpoints
-  app.get("/api/videos", async (_req, res) => {
+  app.get("/api/videos", async (req, res) => {
     try {
+      // Check if pagination parameters are provided
+      const limitParam = req.query.limit ? parseInt(req.query.limit as string) : null;
+      const cursor = req.query.cursor as string | undefined;
+      
+      // Use paginated endpoint if limit is specified
+      if (limitParam !== null) {
+        const limit = Math.min(Math.max(limitParam, 1), 50); // Clamp between 1 and 50
+        const result = await storage.getVideosPage({ limit, cursor });
+        return res.json(result);
+      }
+      
+      // Fallback to old behavior for backward compatibility
       const videos = await storage.getAllVideos();
       
       // Populate user data for each video

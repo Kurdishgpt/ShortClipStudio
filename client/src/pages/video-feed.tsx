@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Video, User } from "@shared/schema";
-import { Heart, MessageCircle, Share2, Music, VolumeX, Volume2 } from "lucide-react";
+import { Heart, MessageCircle, Share2, Music, VolumeX, Volume2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -13,6 +13,11 @@ interface VideoWithUser extends Video {
   user?: User;
 }
 
+interface VideosPage {
+  items: VideoWithUser[];
+  nextCursor: string | null;
+}
+
 export default function VideoFeed() {
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
   const [muted, setMuted] = useState(true);
@@ -21,12 +26,32 @@ export default function VideoFeed() {
   const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null);
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
 
   const { toast } = useToast();
   
-  const { data: videos = [], isLoading } = useQuery<VideoWithUser[]>({
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+  } = useInfiniteQuery<VideosPage>({
     queryKey: ["/api/videos"],
+    queryFn: async ({ pageParam = undefined }) => {
+      const params = new URLSearchParams({ limit: "10" });
+      if (pageParam) {
+        params.append("cursor", pageParam as string);
+      }
+      const response = await fetch(`/api/videos?${params}`);
+      if (!response.ok) throw new Error("Failed to fetch videos");
+      return response.json();
+    },
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
+    initialPageParam: undefined,
   });
+
+  const videos = data?.pages.flatMap((page) => page.items) ?? [];
 
   const likeMutation = useMutation({
     mutationFn: async (videoId: string) => {
@@ -83,6 +108,25 @@ export default function VideoFeed() {
       currentVideo.play().catch(() => {});
     }
   }, [currentVideoIndex]);
+
+  // Intersection Observer for infinite scroll
+  useEffect(() => {
+    const loadMore = loadMoreRef.current;
+    if (!loadMore) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const first = entries[0];
+        if (first.isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    observer.observe(loadMore);
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const handleVideoClick = (index: number) => {
     const video = videoRefs.current[index];
@@ -157,6 +201,7 @@ export default function VideoFeed() {
               loop
               muted={muted}
               playsInline
+              preload="metadata"
               className="h-full w-full object-cover"
               onClick={() => handleVideoClick(index)}
               data-testid={`video-player-${video.id}`}
@@ -166,7 +211,7 @@ export default function VideoFeed() {
             <div className="absolute bottom-24 left-4 right-20 z-10 text-white space-y-2">
               <div className="flex items-center gap-2">
                 <Avatar className="h-10 w-10 border-2 border-white">
-                  <AvatarImage src={video.user?.avatarUrl} />
+                  <AvatarImage src={video.user?.avatarUrl || undefined} />
                   <AvatarFallback className="bg-primary text-primary-foreground">
                     {video.user?.username?.[0]?.toUpperCase() || "U"}
                   </AvatarFallback>
@@ -241,6 +286,25 @@ export default function VideoFeed() {
             </div>
           </div>
         ))}
+
+        {/* Infinite Scroll Trigger */}
+        {hasNextPage && (
+          <div
+            ref={loadMoreRef}
+            className="h-screen w-full snap-start flex items-center justify-center bg-background"
+          >
+            {isFetchingNextPage ? (
+              <div className="flex flex-col items-center gap-4">
+                <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                <p className="text-sm text-muted-foreground">Loading more videos...</p>
+              </div>
+            ) : (
+              <Button onClick={() => fetchNextPage()} variant="outline" size="lg" data-testid="button-load-more">
+                Load More Videos
+              </Button>
+            )}
+          </div>
+        )}
       </div>
 
       {showComments && selectedVideoId && (
