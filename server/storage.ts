@@ -7,8 +7,18 @@ import {
   type InsertComment,
   type Like,
   type InsertLike,
+  users,
+  videos,
+  comments,
+  likes,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
+import { drizzle } from "drizzle-orm/neon-serverless";
+import { Pool, neonConfig } from "@neondatabase/serverless";
+import { eq, desc, and } from "drizzle-orm";
+import ws from "ws";
+
+neonConfig.webSocketConstructor = ws;
 
 export interface IStorage {
   // User methods
@@ -396,4 +406,187 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+export class DBStorage implements IStorage {
+  private db;
+
+  constructor() {
+    if (!process.env.DATABASE_URL) {
+      throw new Error("DATABASE_URL environment variable is required");
+    }
+    
+    const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+    this.db = drizzle(pool);
+  }
+
+  // User methods
+  async getUser(id: string): Promise<User | undefined> {
+    const result = await this.db.select().from(users).where(eq(users.id, id)).limit(1);
+    return result[0];
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const result = await this.db.select().from(users).where(eq(users.username, username)).limit(1);
+    return result[0];
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const id = randomUUID();
+    const user: User = {
+      id,
+      username: insertUser.username,
+      avatarUrl: insertUser.avatarUrl ?? null,
+      bio: insertUser.bio ?? null,
+      followersCount: 0,
+      followingCount: 0,
+      likesCount: 0,
+    };
+    await this.db.insert(users).values(user);
+    return user;
+  }
+
+  async updateUser(id: string, updates: Partial<User>): Promise<User | undefined> {
+    const result = await this.db
+      .update(users)
+      .set(updates)
+      .where(eq(users.id, id))
+      .returning();
+    return result[0];
+  }
+
+  // Video methods
+  async getVideo(id: string): Promise<Video | undefined> {
+    const result = await this.db.select().from(videos).where(eq(videos.id, id)).limit(1);
+    return result[0];
+  }
+
+  async getAllVideos(): Promise<Video[]> {
+    return await this.db.select().from(videos).orderBy(desc(videos.createdAt));
+  }
+
+  async getVideosByUser(userId: string): Promise<Video[]> {
+    return await this.db
+      .select()
+      .from(videos)
+      .where(eq(videos.userId, userId))
+      .orderBy(desc(videos.createdAt));
+  }
+
+  async getTrendingVideos(limit: number = 10): Promise<Video[]> {
+    return await this.db
+      .select()
+      .from(videos)
+      .orderBy(desc(videos.viewsCount))
+      .limit(limit);
+  }
+
+  async createVideo(insertVideo: InsertVideo): Promise<Video> {
+    const id = randomUUID();
+    const video: Video = {
+      id,
+      userId: insertVideo.userId,
+      videoUrl: insertVideo.videoUrl,
+      thumbnailUrl: insertVideo.thumbnailUrl ?? null,
+      caption: insertVideo.caption ?? null,
+      soundName: insertVideo.soundName ?? null,
+      likesCount: 0,
+      commentsCount: 0,
+      viewsCount: 0,
+      createdAt: new Date(),
+    };
+    await this.db.insert(videos).values(video);
+    return video;
+  }
+
+  async updateVideo(id: string, updates: Partial<Video>): Promise<Video | undefined> {
+    const result = await this.db
+      .update(videos)
+      .set(updates)
+      .where(eq(videos.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async incrementVideoViews(id: string): Promise<void> {
+    const video = await this.getVideo(id);
+    if (video) {
+      await this.db
+        .update(videos)
+        .set({ viewsCount: video.viewsCount + 1 })
+        .where(eq(videos.id, id));
+    }
+  }
+
+  // Comment methods
+  async getCommentsByVideo(videoId: string): Promise<Comment[]> {
+    return await this.db
+      .select()
+      .from(comments)
+      .where(eq(comments.videoId, videoId))
+      .orderBy(desc(comments.createdAt));
+  }
+
+  async createComment(insertComment: InsertComment): Promise<Comment> {
+    const id = randomUUID();
+    const comment: Comment = {
+      ...insertComment,
+      id,
+      createdAt: new Date(),
+    };
+    await this.db.insert(comments).values(comment);
+
+    // Increment video comment count
+    const video = await this.getVideo(insertComment.videoId);
+    if (video) {
+      await this.updateVideo(video.id, { commentsCount: video.commentsCount + 1 });
+    }
+
+    return comment;
+  }
+
+  // Like methods
+  async getLikesByVideo(videoId: string): Promise<Like[]> {
+    return await this.db.select().from(likes).where(eq(likes.videoId, videoId));
+  }
+
+  async getLikeByUserAndVideo(userId: string, videoId: string): Promise<Like | undefined> {
+    const result = await this.db
+      .select()
+      .from(likes)
+      .where(and(eq(likes.userId, userId), eq(likes.videoId, videoId)))
+      .limit(1);
+    return result[0];
+  }
+
+  async createLike(insertLike: InsertLike): Promise<Like> {
+    const id = randomUUID();
+    const like: Like = {
+      ...insertLike,
+      id,
+      createdAt: new Date(),
+    };
+    await this.db.insert(likes).values(like);
+
+    // Increment video like count
+    const video = await this.getVideo(insertLike.videoId);
+    if (video) {
+      await this.updateVideo(video.id, { likesCount: video.likesCount + 1 });
+    }
+
+    return like;
+  }
+
+  async deleteLike(id: string): Promise<void> {
+    const like = await this.db.select().from(likes).where(eq(likes.id, id)).limit(1);
+    if (like[0]) {
+      await this.db.delete(likes).where(eq(likes.id, id));
+
+      // Decrement video like count
+      const video = await this.getVideo(like[0].videoId);
+      if (video && video.likesCount > 0) {
+        await this.updateVideo(video.id, { likesCount: video.likesCount - 1 });
+      }
+    }
+  }
+}
+
+export const storage = new DBStorage();
