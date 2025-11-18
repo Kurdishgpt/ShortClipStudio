@@ -24,17 +24,30 @@ const trendingCategories = [
   "Pets",
 ];
 
+interface VideosPage {
+  items: VideoWithUser[];
+  nextCursor: string | null;
+}
+
 export default function Discover() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
-  const { data: videos = [], isLoading } = useQuery<VideoWithUser[]>({
+  const { data: videosData, isLoading } = useQuery<VideosPage>({
     queryKey: ["/api/videos"],
+    queryFn: async () => {
+      const params = new URLSearchParams({ limit: "50" });
+      const response = await fetch(`/api/videos?${params}`);
+      if (!response.ok) throw new Error("Failed to fetch videos");
+      return response.json();
+    },
   });
 
   const { data: trendingVideos = [] } = useQuery<VideoWithUser[]>({
     queryKey: ["/api/videos/trending"],
   });
+
+  const videos = videosData?.items || [];
 
   const filteredVideos = videos.filter((video) => {
     const matchesSearch = searchQuery

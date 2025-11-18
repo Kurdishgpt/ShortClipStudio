@@ -24,9 +24,13 @@ export default function VideoFeed() {
   const [isPlaying, setIsPlaying] = useState(true);
   const [showComments, setShowComments] = useState(false);
   const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null);
-  const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
+  const videoRefs = useRef<(HTMLVideoElement | HTMLIFrameElement | null)[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  const isYouTubeEmbed = (url: string) => {
+    return url.includes('youtube.com/embed');
+  };
 
   const { toast } = useToast();
   
@@ -82,13 +86,13 @@ export default function VideoFeed() {
       if (newIndex !== currentVideoIndex && newIndex < videos.length) {
         setCurrentVideoIndex(newIndex);
         
-        videoRefs.current.forEach((video, index) => {
-          if (video) {
+        videoRefs.current.forEach((element, index) => {
+          if (element && element instanceof HTMLVideoElement) {
             if (index === newIndex) {
-              video.play().catch(() => {});
+              element.play().catch(() => {});
               setIsPlaying(true);
             } else {
-              video.pause();
+              element.pause();
             }
           }
         });
@@ -103,9 +107,9 @@ export default function VideoFeed() {
   }, [currentVideoIndex, videos.length]);
 
   useEffect(() => {
-    const currentVideo = videoRefs.current[currentVideoIndex];
-    if (currentVideo) {
-      currentVideo.play().catch(() => {});
+    const currentElement = videoRefs.current[currentVideoIndex];
+    if (currentElement && currentElement instanceof HTMLVideoElement) {
+      currentElement.play().catch(() => {});
     }
   }, [currentVideoIndex]);
 
@@ -129,13 +133,13 @@ export default function VideoFeed() {
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const handleVideoClick = (index: number) => {
-    const video = videoRefs.current[index];
-    if (video) {
-      if (video.paused) {
-        video.play();
+    const element = videoRefs.current[index];
+    if (element && element instanceof HTMLVideoElement) {
+      if (element.paused) {
+        element.play();
         setIsPlaying(true);
       } else {
-        video.pause();
+        element.pause();
         setIsPlaying(false);
       }
     }
@@ -193,19 +197,30 @@ export default function VideoFeed() {
         {videos.map((video, index) => (
           <div
             key={video.id}
-            className="h-screen w-full snap-start relative flex items-center justify-center"
+            className="h-screen w-full snap-start relative flex items-center justify-center bg-black"
           >
-            <video
-              ref={(el) => (videoRefs.current[index] = el)}
-              src={video.videoUrl}
-              loop
-              muted={muted}
-              playsInline
-              preload="metadata"
-              className="h-full w-full object-cover"
-              onClick={() => handleVideoClick(index)}
-              data-testid={`video-player-${video.id}`}
-            />
+            {isYouTubeEmbed(video.videoUrl) ? (
+              <iframe
+                ref={(el) => (videoRefs.current[index] = el)}
+                src={`${video.videoUrl}?autoplay=${index === currentVideoIndex ? 1 : 0}&mute=${muted ? 1 : 0}&loop=1&controls=0&modestbranding=1&playsinline=1`}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                className="h-full w-full border-0"
+                data-testid={`video-player-${video.id}`}
+              />
+            ) : (
+              <video
+                ref={(el) => (videoRefs.current[index] = el)}
+                src={video.videoUrl}
+                loop
+                muted={muted}
+                playsInline
+                preload="metadata"
+                className="h-full w-full object-cover"
+                onClick={() => handleVideoClick(index)}
+                data-testid={`video-player-${video.id}`}
+              />
+            )}
 
             {/* Video Information - Bottom Left */}
             <div className="absolute bottom-24 left-4 right-20 z-10 text-white space-y-2">
