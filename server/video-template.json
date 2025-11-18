@@ -1,0 +1,9 @@
+[
+  {
+    "videoId": "PUT_YOUTUBE_VIDEO_ID_HERE",
+    "title": "Video Title",
+    "category": "anime | movies | funny | gaming | cybersecurity | tech",
+    "caption": "Your creative caption here with emojis",
+    "soundName": "Original Audio or Sound Name"
+  }
+]
